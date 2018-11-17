@@ -35,12 +35,12 @@ namespace JsDebug
             protocol::Maybe<protocol::String> in_urlRegex,
             protocol::Maybe<int> in_columnNumber,
             protocol::Maybe<protocol::String> in_condition,
-            protocol::String* out_breakpointId,
+            protocol::Maybe<protocol::String>* out_breakpointId,
             std::unique_ptr<protocol::Array<protocol::Debugger::Location>>* out_locations) override;
         protocol::Response setBreakpoint(
             std::unique_ptr<protocol::Debugger::Location> in_location,
             protocol::Maybe<protocol::String> in_condition,
-            protocol::String* out_breakpointId,
+            protocol::Maybe<protocol::String>* out_breakpointId,
             std::unique_ptr<protocol::Debugger::Location>* out_actualLocation) override;
         protocol::Response removeBreakpoint(const protocol::String& in_breakpointId) override;
         protocol::Response continueToLocation(std::unique_ptr<protocol::Debugger::Location> in_location) override;
@@ -102,6 +102,14 @@ namespace JsDebug
         SkipPauseRequest HandleBreakEvent(const DebuggerBreak& breakInfo);
 
         bool TryResolveBreakpoint(DebuggerBreakpoint& breakpoint);
+        
+        // Determine if the given breakpoint's ID is already in the map.  JsDiagSetBreakpoint
+        // returns the existing breakpoint when attempting to set a new breakpoint at the same
+        // location as an existing one, *after* resolving the nearest executable code location.
+        // So we have to check a new breakpoint *after resolution* to see if it was moved on 
+        // top of an existing one, in which case the "new breakpoint" operation didn't really
+        // succeed.
+        bool ActualBreakpointExists(DebuggerBreakpoint& breakpoint);
 
         ProtocolHandler* m_handler;
         protocol::Debugger::Frontend m_frontend;

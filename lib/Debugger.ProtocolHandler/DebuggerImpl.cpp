@@ -107,7 +107,7 @@ namespace JsDebug
         Maybe<String> in_urlRegex,
         Maybe<int> in_columnNumber,
         Maybe<String> in_condition,
-        String  *out_breakpointId,
+        Maybe<String> *out_breakpointId,
         std::unique_ptr<Array<Location>>* out_locations)
     {
         String url;
@@ -172,17 +172,21 @@ namespace JsDebug
             return Response::Error(e.what());
         }
 
-        m_breakpointMap.emplace(breakpointId, breakpoint);
-
-        *out_breakpointId = breakpointId;
         *out_locations = std::move(locations);
+
+        if (!ActualBreakpointExists(breakpoint))
+        {
+            *out_breakpointId = breakpointId;
+            m_breakpointMap.emplace(breakpointId, breakpoint);
+        }
+
         return Response::OK();
     }
 
     Response DebuggerImpl::setBreakpoint(
         std::unique_ptr<Location> in_location,
         Maybe<String> in_condition,
-        String  *out_breakpointId,
+        Maybe<String> *out_breakpointId,
         std::unique_ptr<Location>* out_actualLocation)
     {
         DebuggerBreakpoint breakpoint = DebuggerBreakpoint::FromLocation(
@@ -200,10 +204,14 @@ namespace JsDebug
 
         if (TryResolveBreakpoint(breakpoint))
         {
-            *out_breakpointId = breakpointId;
             *out_actualLocation = breakpoint.GetActualLocation();
 
-            m_breakpointMap.emplace(breakpointId, breakpoint);
+            if (!ActualBreakpointExists(breakpoint))
+            {
+                *out_breakpointId = breakpointId;
+                m_breakpointMap.emplace(breakpointId, breakpoint);
+            }
+
             return Response::OK();
         }
 
@@ -499,6 +507,17 @@ namespace JsDebug
             breakInfo.GetAsyncStackTrace());
 
         return request;
+    }
+
+    bool DebuggerImpl::ActualBreakpointExists(DebuggerBreakpoint& breakpoint)
+    {
+        for (auto &it : m_breakpointMap)
+        {
+            if (it.second.GetActualId() == breakpoint.GetActualId())
+                return true;
+        }
+
+        return false;
     }
 
     bool DebuggerImpl::TryResolveBreakpoint(DebuggerBreakpoint& breakpoint)
