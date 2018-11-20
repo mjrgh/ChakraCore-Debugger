@@ -85,6 +85,12 @@ namespace JsDebug
         m_breakEventCallbackState = callbackState;
     }
 
+    void Debugger::SetResumeEventHandler(DebuggerResumeEventHandler callback, void *callbackState)
+    {
+        m_resumeEventCallback = callback;
+        m_resumeEventCallbackState = callbackState;
+    }
+
     void Debugger::RequestAsyncBreak()
     {
         IfJsErrorThrow(JsDiagRequestAsyncBreak(m_runtime));
@@ -200,7 +206,13 @@ namespace JsDebug
 
     void Debugger::Continue()
     {
-        m_handler->RunIfWaitingForDebugger();
+        m_handler->Continue();
+    }
+
+    void Debugger::Go()
+    {
+        m_shouldPauseOnNextStatement = false;
+        m_handler->Continue();
     }
 
     void Debugger::StepIn()
@@ -242,7 +254,15 @@ namespace JsDebug
         switch (debugEvent) {
         case JsDiagDebugEventSourceCompile:
         case JsDiagDebugEventCompileError:
+            // handle the event
             HandleSourceEvent(eventData, debugEvent == JsDiagDebugEventSourceCompile);
+
+            // If we still have a pending break-on-next-statement, make another
+            // async break request.  The engine considers our prior break request
+            // to be satisified on *any* debug event, even a source event that
+            // never enters the debugger UI.
+            if (m_shouldPauseOnNextStatement)
+                JsDiagRequestAsyncBreak(m_runtime);
             break;
 
         case JsDiagDebugEventBreakpoint:
@@ -258,7 +278,6 @@ namespace JsDebug
                 m_shouldPauseOnNextStatement = false;
                 HandleBreak(eventData);
             }
-
             break;
         }
     }
@@ -290,6 +309,7 @@ namespace JsDebug
             if (request == SkipPauseRequest::RequestNoSkip)
             {
                 m_isRunningNestedMessageLoop = true;
+                m_handler->ProcessDeferredGo();
                 m_handler->WaitForDebugger();
                 m_isRunningNestedMessageLoop = false;
             }
@@ -305,6 +325,8 @@ namespace JsDebug
             {
                 IfJsErrorThrow(JsDiagSetStepType(JsDiagStepTypeStepOut));
             }
+  
+            m_resumeEventCallback(m_resumeEventCallbackState);
         }
     }
 

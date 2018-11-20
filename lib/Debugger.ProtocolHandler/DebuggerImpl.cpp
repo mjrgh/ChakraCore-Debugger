@@ -64,6 +64,7 @@ namespace JsDebug
         m_debugger->Enable();
         m_debugger->SetSourceEventHandler(&DebuggerImpl::SourceEventHandler, this);
         m_debugger->SetBreakEventHandler(&DebuggerImpl::BreakEventHandler, this);
+        m_debugger->SetResumeEventHandler(&DebuggerImpl::ResumeEventHandler, this);
 
         std::vector<DebuggerScript> scripts = m_debugger->GetScripts();
         for (const auto& script : scripts)
@@ -413,6 +414,12 @@ namespace JsDebug
         return debuggerImpl->HandleBreakEvent(breakInfo);
     }
 
+    void DebuggerImpl::ResumeEventHandler(void* callbackState)
+    {
+        const auto debuggerImpl = static_cast<DebuggerImpl*>(callbackState);
+        return debuggerImpl->HandleResumeEvent();
+    }
+
     bool DebuggerImpl::IsEnabled()
     {
         return m_isEnabled;
@@ -507,6 +514,11 @@ namespace JsDebug
             breakInfo.GetAsyncStackTrace());
 
         return request;
+    }
+
+    void DebuggerImpl::HandleResumeEvent()
+    {
+        m_frontend.resumed();
     }
 
     bool DebuggerImpl::ActualBreakpointExists(DebuggerBreakpoint& breakpoint)

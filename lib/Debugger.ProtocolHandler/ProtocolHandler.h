@@ -36,10 +36,14 @@ namespace JsDebug
         void Disconnect();
 
         void SendCommand(const char* command);
+        void SendRequest(const char* request);
         void SetCommandQueueCallback(ProtocolHandlerCommandQueueCallback callback, void* callbackState);
         void ProcessCommandQueue();
         void WaitForDebugger();
         void RunIfWaitingForDebugger();
+        void Continue();
+
+        void ProcessDeferredGo();
 
         std::unique_ptr<protocol::Array<protocol::Schema::Domain>> GetSupportedDomains();
 
@@ -55,6 +59,19 @@ namespace JsDebug
             Connect,
             Disconnect,
             MessageReceived,
+            HostRequest,
+        };
+
+        enum class StartupState
+        {
+            // stay paused in debugger at first break
+            Pause,
+
+            // continue when debugger connects
+            Continue,
+
+            // startup completed
+            Running
         };
 
         void SendResponse(const char* response);
@@ -62,6 +79,7 @@ namespace JsDebug
         void HandleConnect();
         void HandleDisconnect();
         void HandleMessageReceived(const std::string& message);
+        void HandleHostRequest(const std::string& request);
 
         std::unique_ptr<Debugger> m_debugger;
         ProtocolHandlerSendResponseCallback m_sendResponseCallback;
@@ -74,7 +92,10 @@ namespace JsDebug
         std::vector<std::pair<CommandType, std::string>> m_commandQueue;
         bool m_isConnected;
         bool m_waitingForDebugger;
-        bool m_breakOnNextLine;
+        bool m_breakOnConnect;
+        StartupState m_startupState;
+
+        bool m_deferredGo;
 
         protocol::UberDispatcher m_dispatcher;
         std::unique_ptr<ConsoleImpl> m_consoleAgent;

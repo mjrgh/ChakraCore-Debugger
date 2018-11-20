@@ -96,10 +96,12 @@ namespace JsDebug
     private:
         static void SourceEventHandler(const DebuggerScript& script, bool success, void* callbackState);
         static SkipPauseRequest BreakEventHandler(const DebuggerBreak& breakInfo, void* callbackState);
+        static void ResumeEventHandler(void* callbackState);
 
         bool IsEnabled();
         void HandleSourceEvent(const DebuggerScript& script, bool success);
         SkipPauseRequest HandleBreakEvent(const DebuggerBreak& breakInfo);
+        void HandleResumeEvent();
 
         bool TryResolveBreakpoint(DebuggerBreakpoint& breakpoint);
         

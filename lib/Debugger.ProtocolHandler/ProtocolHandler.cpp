@@ -27,8 +27,10 @@ namespace JsDebug
         , m_commandQueueCallbackState(nullptr)
         , m_isConnected(false)
         , m_waitingForDebugger(false)
-        , m_breakOnNextLine(false)
+        , m_breakOnConnect(false)
         , m_dispatcher(this)
+        , m_startupState(StartupState::Running)
+        , m_deferredGo(false)
     {
         if (runtime == nullptr) {
             throw JsErrorException(JsErrorInvalidArgument, c_ErrorRuntimeRequired);
@@ -61,7 +63,8 @@ namespace JsDebug
 
             m_sendResponseCallback = callback;
             m_sendResponseCallbackState = callbackState;
-            m_breakOnNextLine = breakOnNextLine;
+            m_breakOnConnect = breakOnNextLine;
+            m_startupState = breakOnNextLine ? StartupState::Pause : StartupState::Continue;
 
             EnqueueCommand(CommandType::Connect);
         }
@@ -81,7 +84,7 @@ namespace JsDebug
 
             m_sendResponseCallback = nullptr;
             m_sendResponseCallbackState = nullptr;
-            m_breakOnNextLine = false;
+            m_breakOnConnect = false;
 
             EnqueueCommand(CommandType::Disconnect);
         }
@@ -123,6 +126,23 @@ namespace JsDebug
         }
     }
 
+    void ProtocolHandler::SendRequest(const char* request)
+    {
+        ProtocolHandlerCommandQueueCallback callback = nullptr;
+        void* state = nullptr;
+
+        {
+            std::unique_lock<std::mutex> lock(m_lock);
+            EnqueueCommand(CommandType::HostRequest, request);
+
+            callback = m_commandQueueCallback;
+            state = m_commandQueueCallbackState;
+        }
+
+        // Trigger a debugger break
+        m_debugger->RequestAsyncBreak();
+    }
+
     void ProtocolHandler::WaitForDebugger()
     {
         m_waitingForDebugger = true;
@@ -131,7 +151,18 @@ namespace JsDebug
 
     void ProtocolHandler::RunIfWaitingForDebugger()
     {
+        if (m_startupState == StartupState::Pause)
+        {
+            m_debugger->PauseOnNextStatement();
+        }
+
         m_waitingForDebugger = false;
+    }
+
+    void ProtocolHandler::Continue() 
+    {
+        m_waitingForDebugger = false;
+        m_startupState = StartupState::Running;
     }
 
     std::unique_ptr<Array<Domain>> ProtocolHandler::GetSupportedDomains()
@@ -218,10 +249,15 @@ namespace JsDebug
                     HandleMessageReceived(command.second);
                     break;
 
+                case CommandType::HostRequest:
+                    HandleHostRequest(command.second);
+                    break;
+
                 default:
                     throw std::runtime_error("Unknown command type");
                 }
             }
+
         } while (m_waitingForDebugger || !current.empty());
     }
 
@@ -258,10 +294,7 @@ namespace JsDebug
         m_schemaAgent = std::make_unique<SchemaImpl>(this, this);
         protocol::Schema::Dispatcher::wire(&m_dispatcher, m_schemaAgent.get());
 
-        if (m_breakOnNextLine)
-        {
-            m_debugger->PauseOnNextStatement();
-        }
+        m_debugger->PauseOnNextStatement();
 
         m_isConnected = true;
     }
@@ -286,6 +319,35 @@ namespace JsDebug
     {
         protocol::String messageStr = protocol::String::fromUtf8(message.c_str(), message.length());
         m_dispatcher.dispatch(protocol::StringUtil::parseJSON(messageStr));
+    }
+
+    void ProtocolHandler::HandleHostRequest(const std::string& request)
+    {
+        if (request == "Debugger.go")
+        {
+            m_debugger->Go();
+        }
+        else if (request == "Debugger.deferredGo")
+        {
+            m_deferredGo = true;
+        }
+        else if (request == "Debugger.stepInto")
+        {
+            m_debugger->StepIn();
+        }
+        else if (request == "Console.log")
+        {
+            // to do
+        }
+    }
+
+    void ProtocolHandler::ProcessDeferredGo()
+    {
+        if (m_deferredGo)
+        {
+            m_deferredGo = false;
+            SendRequest("Debugger.go");
+        }
     }
 
     void ProtocolHandler::SetCommandQueueCallback(ProtocolHandlerCommandQueueCallback callback, void* callbackState)

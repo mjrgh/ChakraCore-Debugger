@@ -25,8 +25,9 @@ namespace JsDebug
         RequestStepFrame
     };
 
-    typedef void(*DebuggerSourceEventHandler)(const DebuggerScript& scriptInfo, bool success, void* callbackState);
-    typedef SkipPauseRequest(*DebuggerBreakEventHandler)(const DebuggerBreak& breakInfo, void* callbackState);
+    typedef void (*DebuggerSourceEventHandler)(const DebuggerScript& scriptInfo, bool success, void* callbackState);
+    typedef SkipPauseRequest (*DebuggerBreakEventHandler)(const DebuggerBreak& breakInfo, void* callbackState);
+    typedef void (*DebuggerResumeEventHandler)(void* callbackState);
 
     class Debugger
     {
@@ -43,6 +44,7 @@ namespace JsDebug
 
         void SetSourceEventHandler(DebuggerSourceEventHandler callback, void* callbackState);
         void SetBreakEventHandler(DebuggerBreakEventHandler callback, void* callbackState);
+        void SetResumeEventHandler(DebuggerResumeEventHandler callback, void* callbackState);
 
         void RequestAsyncBreak();
         void PauseOnNextStatement();
@@ -63,6 +65,9 @@ namespace JsDebug
         void StepIn();
         void StepOut();
         void StepOver();
+
+        // Go - clear any pending break flag and resume execution
+        void Go();
 
     private:
         static void CHAKRA_CALLBACK DebugEventCallback(
@@ -90,5 +95,8 @@ namespace JsDebug
 
         DebuggerBreakEventHandler m_breakEventCallback;
         void* m_breakEventCallbackState;
+
+        DebuggerResumeEventHandler m_resumeEventCallback;
+        void* m_resumeEventCallbackState;
     };
 }
