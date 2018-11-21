@@ -6,7 +6,7 @@
 #include "Service.h"
 #include <TranslateExceptionToJsErrorCode.h>
 
-CHAKRA_API JsDebugServiceCreate(JsDebugService* service)
+CHAKRA_API JsDebugServiceCreate(JsDebugService* service, const char* title, const char* description)
 {
     if (service == nullptr)
     {
@@ -17,6 +17,7 @@ CHAKRA_API JsDebugServiceCreate(JsDebugService* service)
         [&]() -> void
         {
             auto instance = std::make_unique<JsDebug::Service>();
+            instance->SetServiceName(title, description);
 
             // Release ownership of the pointer
             *service = reinterpret_cast<JsDebugService>(instance.release());

@@ -44,6 +44,9 @@ namespace JsDebug
         m_server.init_asio();
         m_server.set_validate_handler(bind(&Service::OnValidate, this, _1));
         m_server.set_http_handler(bind(&Service::OnHttpRequest, this, _1));
+
+        m_serviceName = "ChakraCore Instance";
+        m_serviceDesc = "ChakraCore Instance";
     }
 
     Service::~Service()
@@ -57,6 +60,12 @@ namespace JsDebug
         {
             // Don't allow the exception to propagate.
         }
+    }
+
+    void Service::SetServiceName(const char*name, const char* description)
+    {
+        m_serviceName = name;
+        m_serviceDesc = description;
     }
 
     void Service::RegisterHandler(const char* id, JsDebugProtocolHandler protocolHandler, bool breakOnNextLine)
@@ -170,12 +179,12 @@ namespace JsDebug
 
                 // TODO: Tweak these values to be more accurate.
                 json << " {\n";
-                json << "  \"description\": \"ChakraCore instance\",\n";
+                json << "  \"description\": \"" << m_serviceDesc << "\",\n";
                 json << "  \"devtoolsFrontendUrl\": " <<
                     "\"chrome-devtools://devtools/bundled/inspector.html?experiments=true&v8only=true&ws=localhost:" <<
                     m_port << "/" << handler.second->Id() << "\",\n";
                 json << "  \"id\": \"" << handler.second->Id() << "\",\n";
-                json << "  \"title\": \"ChakraCore instance\",\n";
+                json << "  \"title\": \"" << m_serviceName << "\",\n";
                 json << "  \"type\": \"node\",\n";
                 json << "  \"url\": \"file://\",\n";
                 json << "  \"webSocketDebuggerUrl\": \"ws://localhost:" << m_port << "/" << handler.second->Id() << "\"\n";
@@ -197,7 +206,7 @@ namespace JsDebug
     {
         std::ostringstream json;
         json << "{\n";
-        json << "  \"Browser\": \"ChakraCore/1.8.3\",\n";
+        json << "  \"Browser\": \"ChakraCore/v1.8.3\",\n";
         json << "  \"Protocol-Version\": \"1.2\"\n";
         json << "}";
 

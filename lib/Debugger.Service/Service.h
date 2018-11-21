@@ -16,6 +16,8 @@ namespace JsDebug
         void RegisterHandler(const char* id, JsDebugProtocolHandler protocolHandler, bool breakOnNextLine);
         void UnregisterHandler(const char* id);
 
+        void SetServiceName(const char *name, const char *description);
+
         void Listen(uint16_t port);
         void Close();
 
@@ -39,5 +41,8 @@ namespace JsDebug
 
         uint16_t m_port;
         handler_map m_handlers;
+
+        std::string m_serviceName;
+        std::string m_serviceDesc;
     };
 }
