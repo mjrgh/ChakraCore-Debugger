@@ -28,13 +28,20 @@ namespace JsDebug
         String16 operator+(const String16& other) const;
         String16& operator+=(const String16& other);
         bool operator==(const String16& other) const;
+        bool operator==(const wchar_t* other) const;
         bool operator!=(const String16& other) const;
+        bool operator!=(const wchar_t* other) const;
 
         static String16 fromInteger(int);
         static String16 fromInteger(size_t);
         static String16 fromDouble(double);
 
         const UChar* characters16() const;
+        const wchar_t *wchars() const 
+        {
+            static_assert(sizeof(wchar_t) == sizeof(UChar));
+            return reinterpret_cast<const wchar_t*>(characters16()); 
+        }
         size_t length() const;
         bool empty() const;
         size_t hash() const;

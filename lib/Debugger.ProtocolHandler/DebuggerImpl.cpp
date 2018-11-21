@@ -525,8 +525,20 @@ namespace JsDebug
     {
         for (auto &it : m_breakpointMap)
         {
-            if (it.second.GetActualId() == breakpoint.GetActualId())
-                return true;
+            if (breakpoint.GetActualId() >= 0)
+            {
+                // breakpoint set in engine - compare by engine ID
+                if (it.second.GetActualId() == breakpoint.GetActualId())
+                    return true;
+            }
+            else
+            {
+                // breakpoint not set in engine - compare by nominal location
+                if (it.second.GetScriptId() == breakpoint.GetScriptId()
+                    && it.second.GetLineNumber() == breakpoint.GetLineNumber()
+                    && it.second.GetColumnNumber() == breakpoint.GetColumnNumber())
+                    return true;
+            }
         }
 
         return false;

@@ -70,9 +70,21 @@ namespace JsDebug
         return m_impl == other.m_impl;
     }
 
+    bool String16::operator==(const wchar_t* other) const
+    {
+        static_assert(sizeof(wchar_t) == sizeof(UChar));
+        return m_impl == reinterpret_cast<const UChar*>(other);
+    }
+
     bool String16::operator!=(const String16& other) const
     {
         return m_impl != other.m_impl;
+    }
+
+    bool String16::operator!=(const wchar_t* other) const
+    {
+        static_assert(sizeof(wchar_t) == sizeof(UChar));
+        return m_impl != reinterpret_cast<const UChar*>(other);
     }
 
     String16 String16::fromInteger(int number)

@@ -34,6 +34,50 @@ namespace JsDebug
         const char c_ResourceJsonVersion[] = "/json/version";
     }
 
+    static void GetChakraCoreVersion(std::string &version)
+    {
+        // set a default
+        version = "0.0.0";
+
+        // get the ChakraCore DLL handle
+        HMODULE hModule = GetModuleHandleW(L"ChakraCore.dll");
+        if (hModule == NULL)
+            return;
+
+        // get the DLL path
+        TCHAR dllPath[_MAX_PATH];
+        GetModuleFileName(hModule, dllPath, _MAX_PATH);
+
+        // "open" file version data
+        DWORD vsInfoHandle = 0;
+        DWORD vsInfoSize = GetFileVersionInfoSize(dllPath, &vsInfoHandle);
+        if (vsInfoSize != 0)
+        {
+            // load the version info
+            std::unique_ptr<BYTE> vsInfo(new BYTE[vsInfoSize]);
+            if (GetFileVersionInfo(dllPath, vsInfoHandle, vsInfoSize, vsInfo.get()))
+            {
+                // retrieve the fixed data portion
+                VS_FIXEDFILEINFO *vsFixedInfo = nullptr;
+                UINT vsFixedInfoLen;
+                if (!VerQueryValueW(vsInfo.get(), L"\\", (LPVOID*)&vsFixedInfo, &vsFixedInfoLen))
+                    vsFixedInfo = nullptr;
+
+                // slice and dice the version number for easier consumption by the caller
+                if (vsFixedInfo != nullptr)
+                {
+                    char buf[128];
+                    sprintf_s(buf, "%d.%d.%d",
+                        (vsFixedInfo->dwProductVersionMS >> 16) & 0xFFFF,
+                        vsFixedInfo->dwProductVersionMS & 0xFFFF,
+                        (vsFixedInfo->dwProductVersionLS >> 16) & 0xFFFF);
+
+                    version = buf;
+                }
+            }
+        }
+    }
+
     Service::Service()
         : m_port(0)
     {
@@ -47,6 +91,7 @@ namespace JsDebug
 
         m_serviceName = "ChakraCore Instance";
         m_serviceDesc = "ChakraCore Instance";
+        GetChakraCoreVersion(m_chakraCoreVersion);
     }
 
     Service::~Service()
@@ -62,10 +107,15 @@ namespace JsDebug
         }
     }
 
-    void Service::SetServiceName(const char*name, const char* description)
+    void Service::SetServiceName(const char* name, const char* description)
     {
-        m_serviceName = name;
-        m_serviceDesc = description;
+        m_serviceName = name != nullptr ? name : "";
+        m_serviceDesc = description != nullptr ? description : name != nullptr ? name : "";
+    }
+
+    void Service::SetFavIcon(const char* url)
+    {
+        m_favIconUrl = url != nullptr ? url : "";
     }
 
     void Service::RegisterHandler(const char* id, JsDebugProtocolHandler protocolHandler, bool breakOnNextLine)
@@ -183,6 +233,8 @@ namespace JsDebug
                 json << "  \"devtoolsFrontendUrl\": " <<
                     "\"chrome-devtools://devtools/bundled/inspector.html?experiments=true&v8only=true&ws=localhost:" <<
                     m_port << "/" << handler.second->Id() << "\",\n";
+                if (m_favIconUrl.length() != 0)
+                    json << "  \"faviconUrl\": \"" << m_favIconUrl << "\",\n";
                 json << "  \"id\": \"" << handler.second->Id() << "\",\n";
                 json << "  \"title\": \"" << m_serviceName << "\",\n";
                 json << "  \"type\": \"node\",\n";
@@ -206,7 +258,7 @@ namespace JsDebug
     {
         std::ostringstream json;
         json << "{\n";
-        json << "  \"Browser\": \"ChakraCore/v1.8.3\",\n";
+        json << "  \"Browser\": \"ChakraCore/v" << m_chakraCoreVersion << "\",\n";
         json << "  \"Protocol-Version\": \"1.2\"\n";
         json << "}";
 

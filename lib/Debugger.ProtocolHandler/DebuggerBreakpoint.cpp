@@ -155,7 +155,28 @@ namespace JsDebug
             return script.ScriptId() == m_query;
 
         case QueryType::Url:
-            return script.SourceUrl() == m_query;
+            // URL match
+            {
+                // try an exact match first
+                auto url = script.SourceUrl();
+                if (url == m_query)
+                    return true;
+
+                // If one or the other starts with file:///, try without file:///.
+                // Chrome seems to remove file:/// from some breakpoint requests.
+                if (url.length() > 8
+                    && wcsncmp(url.wchars(), L"file:///", 8) == 0
+                    && m_query == url.wchars() + 8)
+                    return true;
+
+                if (m_query.length() > 8
+                    && wcsncmp(m_query.wchars(), L"file:///", 8) == 0
+                    && url == m_query.wchars() + 8)
+                    return true;
+            }
+
+            // no match
+            return false;
 
         case QueryType::UrlRegex:
         {
