@@ -25,10 +25,70 @@ namespace JsDebug
         const char c_ErrorNoDisplayString[] = "No display string found";
         const int c_JsrtDebugPropertyReadOnly = 0x4;
 
-        std::unique_ptr<Value> ToProtocolValue(JsValueRef /*object*/)
+        std::unique_ptr<Value> ToProtocolValue(JsValueRef object)
         {
-            // TODO: traverse object graph and build protocol value.
-            return Value::null();
+            JsValueType jstype;
+            IfJsErrorThrow(JsGetValueType(object, &jstype));
+            switch (jstype)
+            {
+            case JsUndefined:
+                // TO DO - distinguish undefined from null?
+                return Value::null();
+
+            case JsNull:
+                return Value::null();
+
+            case JsNumber:
+                {
+                    double d;
+                    IfJsErrorThrow(JsNumberToDouble(object, &d));
+                    return protocol::FundamentalValue::create(d);
+                }
+
+            case JsString:
+                {
+                    const wchar_t *p;
+                    size_t len;
+                    IfJsErrorThrow(JsStringToPointer(object, &p, &len));
+                    static_assert(sizeof(JsDebug::UChar) == sizeof(wchar_t));
+                    protocol::String s(reinterpret_cast<const JsDebug::UChar*>(p), len);
+                    return protocol::StringValue::create(s);
+                }
+
+            case JsObject:
+                // TO DO: populate the object
+                {
+                    auto l = protocol::DictionaryValue::create();
+                    return l;
+                }
+
+            case JsBoolean:
+                {
+                    bool b;
+                    IfJsErrorThrow(JsBooleanToBool(object, &b));
+                    return protocol::FundamentalValue::create(b);
+                }
+
+            case JsFunction:
+                // TO DO
+                return Value::null();
+
+            case JsArray:
+                // TO DO: populate the list
+                {
+                    auto l = protocol::ListValue::create();
+                    return l;
+                }
+
+            case JsError:
+            case JsSymbol:
+            case JsArrayBuffer:
+            case JsTypedArray:
+            case JsDataView:
+            default:
+                // TO DO: handle properly?
+                return Value::null();
+            }
         }
 
         std::unique_ptr<RemoteObject> CreateObject(JsValueRef object)
@@ -55,6 +115,105 @@ namespace JsDebug
         return std::unique_ptr<DictionaryValue>(DictionaryValue::cast(parsedValue.release()));
     }
 
+    std::unique_ptr<RemoteObject> ProtocolHelpers::WrapValue(JsValueRef value)
+    {
+        JsValueRef desc;
+        IfJsErrorThrow(JsCreateObject(&desc));
+        auto SetProp = [desc](const char *name, JsValueRef val)
+        {
+            JsPropertyIdRef propid;
+            IfJsErrorThrow(JsCreatePropertyId(name, strlen(name), &propid));
+            IfJsErrorThrow(JsSetProperty(desc, propid, val, true));
+        };
+        auto SetStrProp = [desc, &SetProp](const char *name, const wchar_t *str)
+        {
+            JsValueRef val;
+            IfJsErrorThrow(JsPointerToString(str, wcslen(str), &val));
+            SetProp(name, val);
+        };
+
+        SetProp("value", value);
+
+        JsValueType jstype;
+        IfJsErrorThrow(JsGetValueType(value, &jstype));
+        const wchar_t *type = L"";
+        const wchar_t *display = L"";
+        const size_t displayBufMax = 200;
+        wchar_t displayBuf[displayBufMax];
+        switch (jstype)
+        {
+        case JsUndefined:
+            type = L"undefined";
+            display = L"undefined";
+            break;
+
+        case JsNull:
+            type = L"null";
+            display = L"null";
+            break;
+
+        case JsNumber:
+            type = L"number";
+            {
+                double d;
+                IfJsErrorThrow(JsNumberToDouble(value, &d));
+                swprintf_s(displayBuf, L"%.8lf", d);
+                display = displayBuf;                
+            }
+            break;
+
+        case JsString:
+            type = L"string";
+            {
+                const wchar_t *p;
+                size_t len;
+                IfJsErrorThrow(JsStringToPointer(value, &p, &len));
+                display = displayBuf;
+                size_t copyLen = min(displayBufMax - 4, len);
+                memcpy(displayBuf, p, copyLen * sizeof(wchar_t));
+                wcscpy_s(displayBuf + copyLen, 5, copyLen < len ? L"..." : L"");
+            }
+            break;
+
+        case JsObject:
+            type = L"object";
+            display = L"{...}";
+            break;
+
+        case JsBoolean:
+            type = L"boolean";
+            {
+                bool b;
+                IfJsErrorThrow(JsBooleanToBool(value, &b));
+                display = b ? L"true" : L"false";
+            }
+            break;
+
+        case JsFunction:
+            type = L"function";
+            display = L"f() {...}";
+            break;
+
+            
+        case JsArray:
+            type = L"array";
+            display = L"[...]";
+            break;
+
+        case JsError:
+        case JsSymbol:
+        case JsArrayBuffer:
+        case JsTypedArray:
+        case JsDataView:
+            throw std::runtime_error("WrapValue cannot wrap this type");
+        }
+
+        SetStrProp("name", L"[value]");
+        SetStrProp("type", type);
+        SetStrProp("display", display);
+        return WrapObject(desc);
+    }
+
     std::unique_ptr<RemoteObject> ProtocolHelpers::WrapObject(JsValueRef object)
     {
         auto remoteObject = CreateObject(object);
@@ -67,12 +226,10 @@ namespace JsDebug
 
         JsValueRef value = JS_INVALID_REFERENCE;
         bool hasValue = PropertyHelpers::TryGetProperty(object, PropertyHelpers::Names::Value, &value);
-        // TODO: Once `ToProtocolValue` is implemented uncomment the following code. VS Code prefers `value` in most
-        //       cases and prevents viewing the values of variables.
-        ////if (hasValue)
-        ////{
-        ////    remoteObject->setValue(ToProtocolValue(value));
-        ////}
+        if (hasValue)
+        {
+            remoteObject->setValue(ToProtocolValue(value));
+        }
 
         String display;
         bool hasDisplay = PropertyHelpers::TryGetProperty(object, PropertyHelpers::Names::Display, &display);

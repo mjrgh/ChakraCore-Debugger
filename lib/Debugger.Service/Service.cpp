@@ -5,6 +5,7 @@
 #include "Service.h"
 
 #include <iostream>
+#include <regex>
 
 namespace JsDebug
 {
@@ -234,7 +235,7 @@ namespace JsDebug
                     "\"chrome-devtools://devtools/bundled/inspector.html?experiments=true&v8only=true&ws=localhost:" <<
                     m_port << "/" << handler.second->Id() << "\",\n";
                 if (m_favIconUrl.length() != 0)
-                    json << "  \"faviconUrl\": \"" << m_favIconUrl << "\",\n";
+                    json << "  \"faviconUrl\": \"" << std::regex_replace(m_favIconUrl, std::regex("([\\\\\"])"), "\\$1") << "\",\n";
                 json << "  \"id\": \"" << handler.second->Id() << "\",\n";
                 json << "  \"title\": \"" << m_serviceName << "\",\n";
                 json << "  \"type\": \"node\",\n";

@@ -78,6 +78,16 @@ CHAKRA_API JsDebugProtocolHandlerSendRequest(_In_ JsDebugProtocolHandler protoco
     });
 }
 
+CHAKRA_API JsDebugConsoleAPIEvent(_In_ JsDebugProtocolHandler protocolHandler, _In_z_ const char* type, _In_ const JsValueRef* argv, _In_ unsigned short argc)
+{
+    return JsDebug::TranslateExceptionToJsErrorCode<JsDebug::ProtocolHandler*>(
+        protocolHandler,
+        [&](JsDebug::ProtocolHandler* instance) -> void
+    {
+        instance->ConsoleAPIEvent(type, argv, argc);
+    });
+}
+
 CHAKRA_API JsDebugProtocolHandlerWaitForDebugger(JsDebugProtocolHandler protocolHandler)
 {
     return JsDebug::TranslateExceptionToJsErrorCode<JsDebug::ProtocolHandler*>(

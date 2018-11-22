@@ -224,4 +224,14 @@ namespace JsDebug
     {
         return m_isEnabled;
     }
+
+    void RuntimeImpl::consoleAPIEvent(const char* type, const JsValueRef* argv, unsigned short argc)
+    {
+        auto argArray = protocol::Array<protocol::Runtime::RemoteObject>::create();
+        protocol::ErrorSupport es;
+        for (unsigned short i = 0; i < argc; ++i)
+            argArray->addItem(ProtocolHelpers::WrapValue(argv[i]));
+        m_frontend.consoleAPICalled(type, std::move(argArray), 0, 0);
+    }
+
 }

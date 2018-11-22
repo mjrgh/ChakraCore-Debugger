@@ -37,6 +37,7 @@ namespace JsDebug
 
         void SendCommand(const char* command);
         void SendRequest(const char* request);
+        void ConsoleAPIEvent(const char* type, const JsValueRef* argv, unsigned short argc);
         void SetCommandQueueCallback(ProtocolHandlerCommandQueueCallback callback, void* callbackState);
         void ProcessCommandQueue();
         void WaitForDebugger();

@@ -36,14 +36,17 @@ namespace JsDebug
     {
         if (!m_scriptInfo.IsEmpty())
         {
-            m_scriptId = PropertyHelpers::GetPropertyInt(m_scriptInfo.Get(), PropertyHelpers::Names::ScriptId);
+            if (PropertyHelpers::HasProperty(m_scriptInfo.Get(), PropertyHelpers::Names::ScriptId))
+            {
+                m_scriptId = PropertyHelpers::GetPropertyInt(m_scriptInfo.Get(), PropertyHelpers::Names::ScriptId);
 
-            JsValueRef scriptSource = JS_INVALID_REFERENCE;
-            IfJsErrorThrow(JsDiagGetSource(m_scriptId, &scriptSource));
-            m_scriptSource = scriptSource;
+                JsValueRef scriptSource = JS_INVALID_REFERENCE;
+                IfJsErrorThrow(JsDiagGetSource(m_scriptId, &scriptSource));
+                m_scriptSource = scriptSource;
 
-            // TODO: calculate file hash
-            ParseScriptSource();
+                // TODO: calculate file hash
+                ParseScriptSource();
+            }
         }
     }
 

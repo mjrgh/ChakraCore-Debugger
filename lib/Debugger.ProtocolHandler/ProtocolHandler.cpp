@@ -143,6 +143,12 @@ namespace JsDebug
         m_debugger->RequestAsyncBreak();
     }
 
+    void ProtocolHandler::ConsoleAPIEvent(const char* type, const JsValueRef* argv, unsigned short argc)
+    {
+        m_runtimeAgent->consoleAPIEvent(type, argv, argc);
+    }
+
+
     void ProtocolHandler::WaitForDebugger()
     {
         m_waitingForDebugger = true;

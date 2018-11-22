@@ -80,6 +80,8 @@ namespace JsDebug
             protocol::Maybe<bool> in_awaitPromise,
             std::unique_ptr<RunScriptCallback> callback) override;
 
+        void consoleAPIEvent(const char* type, const JsValueRef* argv, unsigned short argc);
+
     private:
         bool IsEnabled();
 

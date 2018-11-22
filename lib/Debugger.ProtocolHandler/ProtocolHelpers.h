@@ -14,6 +14,7 @@ namespace JsDebug
     {
         protocol::String GetObjectId(int handle);
         std::unique_ptr<protocol::DictionaryValue> ParseObjectId(const protocol::String& objectId);
+        std::unique_ptr<protocol::Runtime::RemoteObject> WrapValue(JsValueRef object);
         std::unique_ptr<protocol::Runtime::RemoteObject> WrapObject(JsValueRef object);
         std::unique_ptr<protocol::Runtime::RemoteObject> WrapException(JsValueRef exception);
         std::unique_ptr<protocol::Runtime::ExceptionDetails> WrapExceptionDetails(JsValueRef exception);
