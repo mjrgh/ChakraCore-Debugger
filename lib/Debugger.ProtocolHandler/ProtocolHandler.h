@@ -93,6 +93,7 @@ namespace JsDebug
         std::vector<std::pair<CommandType, std::string>> m_commandQueue;
         bool m_isConnected;
         bool m_waitingForDebugger;
+        bool m_processingCommandQueue;
         bool m_breakOnConnect;
         StartupState m_startupState;
 

@@ -864,7 +864,6 @@ public:
     void registerBackend(const String& name, std::unique_ptr<protocol::DispatcherBase>);
     void setupRedirects(const HashMap<String, String>&);
     DispatchResponse::Status dispatch(std::unique_ptr<Value> message, int* callId = nullptr, String* method = nullptr);
-    void hostRequest(const std::string& request);
     FrontendChannel* channel() { return m_frontendChannel; }
     bool fallThroughForNotFound() { return m_fallThroughForNotFound; }
     void setFallThroughForNotFound(bool);

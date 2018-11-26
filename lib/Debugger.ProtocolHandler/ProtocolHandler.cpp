@@ -31,6 +31,7 @@ namespace JsDebug
         , m_dispatcher(this)
         , m_startupState(StartupState::Running)
         , m_deferredGo(false)
+        , m_processingCommandQueue(false)
     {
         if (runtime == nullptr) {
             throw JsErrorException(JsErrorInvalidArgument, c_ErrorRuntimeRequired);
@@ -219,6 +220,17 @@ namespace JsDebug
 
     void ProtocolHandler::ProcessCommandQueue()
     {
+        // don't enter recursively
+        if (m_processingCommandQueue)
+            return;
+
+        struct RecurseFlag
+        {
+            RecurseFlag(ProtocolHandler *self) : self(self) { self->m_processingCommandQueue = true; }
+            ~RecurseFlag() { self->m_processingCommandQueue = false; }
+            ProtocolHandler *self;
+        } recurseFlag(this);
+
         // Ensure that there's an active context before trying to process the queue.
         DebuggerContext::Scope debuggerScope(*m_debugger->GetDebugContext());
 

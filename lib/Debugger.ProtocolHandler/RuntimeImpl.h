@@ -31,6 +31,7 @@ namespace JsDebug
             protocol::Maybe<bool> in_generatePreview,
             protocol::Maybe<bool> in_userGesture,
             protocol::Maybe<bool> in_awaitPromise,
+            protocol::Maybe<bool> in_throwOnSideEffect,
             std::unique_ptr<EvaluateCallback> callback) override;
         void awaitPromise(
             const protocol::String& in_promiseObjectId,

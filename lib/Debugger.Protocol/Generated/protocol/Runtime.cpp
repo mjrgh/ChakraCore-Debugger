@@ -1309,6 +1309,12 @@ DispatchResponse::Status DispatcherImpl::evaluate(int callId, std::unique_ptr<Di
         errors->setName("awaitPromise");
         in_awaitPromise = ValueConversions<bool>::fromValue(awaitPromiseValue, errors);
     }
+    protocol::Value* throwOnSideEffectValue = object ? object->get("throwOnSideEffect") : nullptr;
+    Maybe<bool> in_throwOnSideEffect;
+    if (throwOnSideEffectValue) {
+        errors->setName("throwOnSideEffect");
+        in_throwOnSideEffect = ValueConversions<bool>::fromValue(throwOnSideEffectValue, errors);
+    }
     errors->pop();
     if (errors->hasErrors()) {
         reportProtocolError(callId, DispatchResponse::kInvalidParams, kInvalidParamsString, errors);
@@ -1317,7 +1323,7 @@ DispatchResponse::Status DispatcherImpl::evaluate(int callId, std::unique_ptr<Di
 
     std::unique_ptr<DispatcherBase::WeakPtr> weak = weakPtr();
     std::unique_ptr<EvaluateCallbackImpl> callback(new EvaluateCallbackImpl(weakPtr(), callId, nextCallbackId()));
-    m_backend->evaluate(in_expression, std::move(in_objectGroup), std::move(in_includeCommandLineAPI), std::move(in_silent), std::move(in_contextId), std::move(in_returnByValue), std::move(in_generatePreview), std::move(in_userGesture), std::move(in_awaitPromise), std::move(callback));
+    m_backend->evaluate(in_expression, std::move(in_objectGroup), std::move(in_includeCommandLineAPI), std::move(in_silent), std::move(in_contextId), std::move(in_returnByValue), std::move(in_generatePreview), std::move(in_userGesture), std::move(in_awaitPromise), std::move(in_throwOnSideEffect), std::move(callback));
     return (weak->get() && weak->get()->lastCallbackFallThrough()) ? DispatchResponse::kFallThrough : DispatchResponse::kAsync;
 }
 

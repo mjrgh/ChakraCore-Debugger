@@ -31,7 +31,7 @@ namespace JsDebug
             return protocol::Debugger::Paused::ReasonEnum::Exception;
         }
 
-        return protocol::Debugger::Paused::ReasonEnum::Other;
+        return protocol::Debugger::Paused::ReasonEnum::DebugCommand;
     }
 
     Maybe<DictionaryValue> DebuggerBreak::GetData() const
