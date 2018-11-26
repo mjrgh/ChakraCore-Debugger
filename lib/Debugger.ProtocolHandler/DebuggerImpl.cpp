@@ -84,6 +84,8 @@ namespace JsDebug
         m_isEnabled = false;
         m_debugger->Disable();
         m_debugger->SetSourceEventHandler(nullptr, nullptr);
+        m_debugger->SetBreakEventHandler(nullptr, nullptr);
+        m_debugger->SetResumeEventHandler(nullptr, nullptr);
 
         m_breakpointMap.clear();
         m_scriptMap.clear();

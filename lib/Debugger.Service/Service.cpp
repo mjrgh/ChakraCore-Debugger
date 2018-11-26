@@ -33,6 +33,7 @@ namespace JsDebug
         const char c_ResourceJsonList[] = "/json/list";
         const char c_ResourceJsonProtocol[] = "/json/protocol";
         const char c_ResourceJsonVersion[] = "/json/version";
+        const char c_ResourceIcon[] = "/resource/icon.ico";
     }
 
     static void GetChakraCoreVersion(std::string &version)
@@ -114,9 +115,12 @@ namespace JsDebug
         m_serviceDesc = description != nullptr ? description : name != nullptr ? name : "";
     }
 
-    void Service::SetFavIcon(const char* url)
+    void Service::SetFavIcon(const BYTE* data, size_t size)
     {
-        m_favIconUrl = url != nullptr ? url : "";
+        if (data != nullptr)
+            m_favIcon.assign(reinterpret_cast<const char*>(data), size);
+        else
+            m_favIcon.clear();
     }
 
     void Service::RegisterHandler(const char* id, JsDebugProtocolHandler protocolHandler, bool breakOnNextLine)
@@ -202,6 +206,10 @@ namespace JsDebug
             {
                 HandleListRequest(hdl);
             }
+            else if (resource.rfind(c_ResourceIcon) == 0)
+            {
+                HandleIconRequest(hdl);
+            }
             else
             {
                 connection->set_status(websocketpp::http::status_code::not_found);
@@ -234,8 +242,8 @@ namespace JsDebug
                 json << "  \"devtoolsFrontendUrl\": " <<
                     "\"chrome-devtools://devtools/bundled/inspector.html?experiments=true&v8only=true&ws=localhost:" <<
                     m_port << "/" << handler.second->Id() << "\",\n";
-                if (m_favIconUrl.length() != 0)
-                    json << "  \"faviconUrl\": \"" << std::regex_replace(m_favIconUrl, std::regex("([\\\\\"])"), "\\$1") << "\",\n";
+                if (m_favIcon.length() != 0)
+                    json << "  \"faviconUrl\": \"http://localhost:" << m_port << c_ResourceIcon << "\",\n";
                 json << "  \"id\": \"" << handler.second->Id() << "\",\n";
                 json << "  \"title\": \"" << m_serviceName << "\",\n";
                 json << "  \"type\": \"node\",\n";
@@ -265,6 +273,24 @@ namespace JsDebug
 
         // TODO: Can we get the version of ChakraCore?
         SendHttpJsonResponse(hdl, json.str());
+    }
+
+    void Service::HandleIconRequest(websocketpp::connection_hdl hdl)
+    {
+        auto connection = m_server.get_con_from_hdl(hdl);
+        if (connection != nullptr)
+        {
+            if (m_favIcon.length() != 0)
+            {
+                connection->append_header(c_HeaderContentTypeName, "image/x-icon");
+                connection->set_body(m_favIcon);
+                connection->set_status(websocketpp::http::status_code::ok);
+            }
+            else
+            {
+                connection->set_status(websocketpp::http::status_code::not_found);
+            }
+        }
     }
 
     void Service::SendHttpJsonResponse(connection_hdl hdl, const std::string& jsonBody)

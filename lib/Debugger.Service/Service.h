@@ -17,7 +17,7 @@ namespace JsDebug
         void UnregisterHandler(const char* id);
 
         void SetServiceName(const char* name, const char* description);
-        void SetFavIcon(const char* url);
+        void SetFavIcon(const BYTE* data, size_t size);
 
         void Listen(uint16_t port);
         void Close();
@@ -29,6 +29,7 @@ namespace JsDebug
         void HandleListRequest(websocketpp::connection_hdl hdl);
         void HandleProtocolRequest(websocketpp::connection_hdl hdl);
         void HandleVersionRequest(websocketpp::connection_hdl hdl);
+        void HandleIconRequest(websocketpp::connection_hdl hdl);
 
         void SendHttpJsonResponse(websocketpp::connection_hdl hdl, const std::string& jsonBody);
 
@@ -45,7 +46,7 @@ namespace JsDebug
 
         std::string m_serviceName;
         std::string m_serviceDesc;
-        std::string m_favIconUrl;
+        std::string m_favIcon;
 
         std::string m_chakraCoreVersion;
     };

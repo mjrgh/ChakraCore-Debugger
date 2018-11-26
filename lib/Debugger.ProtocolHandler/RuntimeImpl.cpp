@@ -274,6 +274,7 @@ namespace JsDebug
                 .setText(PropertyHelpers::GetPropertyString(PropertyHelpers::GetProperty(excval, "exception"), "message"));
 
             *exceptionDetails = details->build();
+            return Response::OK();
         }
 
         // no exception information available - fail

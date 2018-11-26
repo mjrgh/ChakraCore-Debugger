@@ -146,7 +146,8 @@ namespace JsDebug
 
     void ProtocolHandler::ConsoleAPIEvent(const char* type, const JsValueRef* argv, unsigned short argc)
     {
-        m_runtimeAgent->consoleAPIEvent(type, argv, argc);
+        if (m_runtimeAgent != nullptr)
+            m_runtimeAgent->consoleAPIEvent(type, argv, argc);
     }
 
 

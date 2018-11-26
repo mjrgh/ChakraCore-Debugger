@@ -326,7 +326,8 @@ namespace JsDebug
                 IfJsErrorThrow(JsDiagSetStepType(JsDiagStepTypeStepOut));
             }
   
-            m_resumeEventCallback(m_resumeEventCallbackState);
+            if (m_resumeEventCallback != nullptr)
+                m_resumeEventCallback(m_resumeEventCallbackState);
         }
     }
 
