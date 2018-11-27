@@ -9,6 +9,7 @@
 #include "ProtocolHelpers.h"
 
 #include <StringUtil.h>
+#include <regex>
 
 namespace JsDebug
 {
@@ -49,7 +50,7 @@ namespace JsDebug
         const String& expr,
         Maybe<String> /*in_objectGroup*/,
         Maybe<bool> /*in_includeCommandLineAPI*/,
-        Maybe<bool> /*in_silent*/,
+        Maybe<bool> silent,
         Maybe<int> /*in_contextId*/,
         Maybe<bool> /*in_returnByValue*/,
         Maybe<bool> /*in_generatePreview*/,
@@ -58,44 +59,166 @@ namespace JsDebug
         Maybe<bool> throwOnSideEffect,
         std::unique_ptr<EvaluateCallback> callback)
     {
+        // Return an error result.  In silent mode, return it as an
+        // exception; otherwise return it as a failure code.
+        auto ErrorResult = [&silent, &callback](const char *msg)
+        {
+            if (silent.fromMaybe(false))
+            {
+                auto remote0 = protocol::Runtime::RemoteObject::create();
+                auto remote = &remote0.setType("error")
+                    .setClassName("Error")
+                    .setDescription(msg)
+                    .setSubtype("error");
+
+                auto details0 = ExceptionDetails::create();
+                auto details = &details0.setLineNumber(-1)
+                    .setColumnNumber(-1)
+                    .setExceptionId(0)
+                    .setText(msg);
+
+                callback->sendSuccess(remote->build(), details->build());
+            }
+            else
+            {
+                // return with an error
+                callback->sendFailure(Response::Error(msg));
+            }
+        };
+
+        // Check for and return a script error
         // If "throw on side effect" is true, throw.  We can't rule out an error.
         if (throwOnSideEffect.fromMaybe(false))
         {
-            auto remote0 = protocol::Runtime::RemoteObject::create();
-            auto remote = &remote0.setType("error")
-                .setClassName("error")
-                .setDescription("Eval Error") 
-                .setSubtype("error");
-
             auto details0 = ExceptionDetails::create();
             auto details = &details0.setLineNumber(-1)
                 .setColumnNumber(-1)
                 .setExceptionId(0)
                 .setText("Possible side effects of expression evaluation");
 
-            callback->sendSuccess(remote->build(), details->build());
+            callback->sendSuccess(ProtocolHelpers::GetUndefinedObject(), details->build());
             return;
         }
 
-        // if "await promise" is set, fail
+        // "await promise" isn't implemented yet
         if (awaitPromise.fromMaybe(false))
         {
-            callback->sendFailure(Response::Error(c_ErrorNotImplemented));
-            return;
+            return ErrorResult(c_ErrorNotImplemented);
         }
 
-        // evaluate the expression
-        JsValueRef exprval, result;
+        // Evaluate the expression.  Try first using JsDiagEvaluate, which evaluates
+        // the expression in the current debug stack frame, but which can only be used
+        // when paused in the debugger.
+        JsValueRef exprval;
         JsErrorCode err;
-        if ((err = JsPointerToString(expr.wchars(), expr.length(), &exprval)) != JsNoError
-            || (err = JsDiagEvaluate(exprval, 0, JsParseScriptAttributeNone, false, &result)) != JsNoError)
+        if ((err = JsPointerToString(expr.wchars(), expr.length(), &exprval)) != JsNoError)
         {
-            callback->sendFailure(Response::Error(c_ErrorScriptParse));
+            return ErrorResult(c_ErrorScriptParse);
+        }
+
+        // try evaluating the result
+        JsValueRef result;
+        err = JsDiagEvaluate(exprval, 0, JsParseScriptAttributeNone, false, &result);
+
+        // check for evaluation errors
+        if (err == JsErrorScriptException || err == JsErrorScriptCompile)
+        {
+            // the result is the exception object
+                // return the exception details
+            auto details0 = ExceptionDetails::create();
+            auto details = &details0.setLineNumber(-1)
+                .setColumnNumber(-1)
+                .setException(ProtocolHelpers::WrapException(result))
+                .setExceptionId(0)
+                .setText("Exception");
+
+            callback->sendSuccess(ProtocolHelpers::GetUndefinedObject(), details->build());
             return;
         }
 
-        // return the result
-        callback->sendSuccess(ProtocolHelpers::WrapObject(result), Maybe<ExceptionDetails>());
+        // return the result if successful
+        if (err == JsNoError)
+        {
+            callback->sendSuccess(ProtocolHelpers::WrapObject(result), Maybe<ExceptionDetails>());
+            return;
+        }
+
+        // If we weren't paused in the debugger, we'll have to use gloabl evaluation instead
+        if (err == JsErrorDiagNotAtBreak)
+        {
+            // Try running the script directly.  To avoid uncaught parse
+            // errors, wrap it in an eval() with a try/catch.
+            std::wstring wrappedExpr = L"try{({value:eval(\"";
+            wrappedExpr += std::regex_replace(expr.wchars(), std::wregex(L"[\"\\\\]"), L"\\$0");
+            wrappedExpr += L"\")})}catch(e){({error:e})}";
+
+            // evaluate it
+            err = JsRunScript(wrappedExpr.c_str(), 0, L"debugger:", &exprval);
+
+            // If successful, the result will be an object with one property, either
+            // "value" if the evaluation succeeded, or "error" if the evaluation
+            // resulted in an error.
+            JsValueType exprtype;
+            if (err == JsNoError && JsGetValueType(exprval, &exprtype) == JsNoError && exprtype == JsObject)
+            {
+                if (PropertyHelpers::HasProperty(exprval, "error"))
+                {
+                    // an exception was thrown from eval() - wrap it for the exception details
+                    JsValueRef exc = PropertyHelpers::GetProperty(exprval, "error");
+                    JsValueRef excStrVal;
+                    String excStr;
+                    const wchar_t *excText;
+                    size_t excLen;
+                    if (JsConvertValueToString(exc, &excStrVal) == JsNoError
+                        && JsStringToPointer(excStrVal, &excText, &excLen) == JsNoError)
+                    {
+                        static_assert(sizeof(wchar_t) == sizeof(UChar));
+                        excStr = String(reinterpret_cast<const UChar*>(excText), excLen);
+                    }
+                    else
+                    {
+                        excStr = "Expression error";
+                    }
+
+                    auto details0 = ExceptionDetails::create();
+                    auto details = &details0.setLineNumber(-1)
+                        .setColumnNumber(-1)
+                        .setExceptionId(0)
+                        .setText(excStr);
+
+                    callback->sendSuccess(ProtocolHelpers::GetUndefinedObject(), details->build());
+                }
+                else
+                {
+                    // eval() succeeded - wrap the result value
+                    callback->sendSuccess(ProtocolHelpers::WrapValue(PropertyHelpers::GetProperty(exprval, "value")), Maybe<ExceptionDetails>());
+                }
+                return;
+            }
+
+            // check for a compilation or execution error with an exception
+            // check for a compile or script execution error, with an exception
+            // object in the javascript context
+            bool hasExc;
+            JsValueRef exc;
+            if ((err == JsErrorScriptCompile || err == JsErrorScriptException)
+                && JsHasException(&hasExc) == JsNoError
+                && JsGetAndClearExceptionWithMetadata(&exc) == JsNoError)
+            {
+                // return the exception details
+                auto details0 = ExceptionDetails::create();
+                auto details = &details0.setLineNumber(PropertyHelpers::GetPropertyInt(exc, "line"))
+                    .setColumnNumber(PropertyHelpers::GetPropertyInt(exc, "column"))
+                    .setExceptionId(0)
+                    .setText(PropertyHelpers::GetPropertyString(PropertyHelpers::GetProperty(exc, "exception"), "message"));
+
+                callback->sendSuccess(ProtocolHelpers::GetUndefinedObject(), details->build());
+                return;
+            }
+        }
+
+        // other error - return failure
+        ErrorResult(c_ErrorScriptParse);
     }
 
     void RuntimeImpl::awaitPromise(
