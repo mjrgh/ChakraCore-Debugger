@@ -216,6 +216,13 @@ namespace JsDebug
 
     std::unique_ptr<RemoteObject> ProtocolHelpers::WrapObject(JsValueRef object)
     {
+        // if we're trying to wrap 'undefined', there's a special wrapper for that
+        JsValueRef value = JS_INVALID_REFERENCE;
+        JsValueType valueType;
+        if (!PropertyHelpers::TryGetProperty(object, PropertyHelpers::Names::Type, &value)
+            || (JsGetValueType(value, &valueType) == JsNoError && valueType == JsUndefined))
+            return GetUndefinedObject();
+
         auto remoteObject = CreateObject(object);
 
         String className;
@@ -224,7 +231,6 @@ namespace JsDebug
             remoteObject->setClassName(className);
         }
 
-        JsValueRef value = JS_INVALID_REFERENCE;
         bool hasValue = PropertyHelpers::TryGetProperty(object, PropertyHelpers::Names::Value, &value);
         if (hasValue)
         {
