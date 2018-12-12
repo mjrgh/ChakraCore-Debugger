@@ -171,7 +171,7 @@ namespace JsDebug
                 display = displayBuf;
                 size_t copyLen = min(displayBufMax - 4, len);
                 memcpy(displayBuf, p, copyLen * sizeof(wchar_t));
-                wcscpy_s(displayBuf + copyLen, 5, copyLen < len ? L"..." : L"");
+                wcscpy_s(displayBuf + copyLen, 4, copyLen < len ? L"..." : L"");
             }
             break;
 
