@@ -100,7 +100,7 @@ namespace JsDebug
             throw JsErrorException(JsErrorInvalidArgument, c_ErrorCommandRequired);
         }
 
-#ifdef _DEBUG
+#if defined(_DEBUG) && 0
         OutputDebugStringA("{\"type\":\"request\",\"payload\":");
         OutputDebugStringA(command);
         OutputDebugStringA("},\r\n");
@@ -204,7 +204,7 @@ namespace JsDebug
     {
         protocol::String str = message->serialize();
 
-#ifdef _DEBUG
+#if defined(_DEBUG) && 0
         static_assert(sizeof(wchar_t) == sizeof(uint16_t));
         OutputDebugStringA("{\"type\":\"response\",\"payload\":");
         OutputDebugStringW(reinterpret_cast<const wchar_t*>(str.characters16()));
