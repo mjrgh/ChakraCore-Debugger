@@ -149,7 +149,7 @@ namespace JsDebug
             // Try running the script directly.  To avoid uncaught parse
             // errors, wrap it in an eval() with a try/catch.
             std::wstring wrappedExpr = L"try{({value:eval(\"";
-            wrappedExpr += std::regex_replace(expr.wchars(), std::wregex(L"[\"\\\\]"), L"\\$0");
+            wrappedExpr += std::regex_replace(expr.wchars(), std::wregex(L"[\"\\\\]"), L"\\$&");
             wrappedExpr += L"\")})}catch(e){({error:e})}";
 
             // evaluate it
@@ -251,53 +251,70 @@ namespace JsDebug
         Maybe<bool> /*in_generatePreview*/,
         std::unique_ptr<Array<PropertyDescriptor>>* out_result,
         Maybe<Array<InternalPropertyDescriptor>>* out_internalProperties,
-        Maybe<ExceptionDetails>* /*out_exceptionDetails*/)
+        Maybe<ExceptionDetails>* out_exceptionDetails)
     {
-        if (in_accessorPropertiesOnly.fromMaybe(false))
+        try
         {
-            // We don't support accessorPropertiesOnly queries, just return an empty list.
+            if (in_accessorPropertiesOnly.fromMaybe(false))
+            {
+                // We don't support accessorPropertiesOnly queries, just return an empty list.
+                *out_result = Array<PropertyDescriptor>::create();
+                return Response::OK();
+            }
+
+            auto parsedId = ProtocolHelpers::ParseObjectId(in_objectId);
+
+            int handle = 0;
+            int ordinal = 0;
+            String name;
+
+            if (parsedId->getInteger(PropertyHelpers::Names::Handle, &handle))
+            {
+                DebuggerObject obj = m_debugger->GetObjectFromHandle(handle);
+                *out_result = obj.GetPropertyDescriptors();
+                *out_internalProperties = obj.GetInternalPropertyDescriptors();
+
+                return Response::OK();
+            }
+            else if (parsedId->getInteger(PropertyHelpers::Names::Ordinal, &ordinal) &&
+                parsedId->getString(PropertyHelpers::Names::Name, &name))
+            {
+                DebuggerCallFrame callFrame = m_debugger->GetCallFrame(ordinal);
+
+                if (name == PropertyHelpers::Names::Locals)
+                {
+                    DebuggerLocalScope obj = callFrame.GetLocals();
+                    *out_result = obj.GetPropertyDescriptors();
+                    *out_internalProperties = obj.GetInternalPropertyDescriptors();
+
+                    return Response::OK();
+                }
+                else if (name == PropertyHelpers::Names::Globals)
+                {
+                    DebuggerObject obj = callFrame.GetGlobals();
+                    *out_result = obj.GetPropertyDescriptors();
+                    *out_internalProperties = obj.GetInternalPropertyDescriptors();
+
+                    return Response::OK();
+                }
+            }
+
+            return Response::Error(c_ErrorInvalidObjectId);
+        }
+        catch (const JsErrorException& exc) 
+        {
+            // set up the exception descriptor
+            auto details0 = ExceptionDetails::create();
+            auto details = &details0.setLineNumber(0)
+                .setColumnNumber(0)
+                .setExceptionId(0)
+                .setText(exc.what());
+            *out_exceptionDetails = details->build();
+
+            // some kind of response object is required - return an empty list
             *out_result = Array<PropertyDescriptor>::create();
             return Response::OK();
         }
-
-        auto parsedId = ProtocolHelpers::ParseObjectId(in_objectId);
-
-        int handle = 0;
-        int ordinal = 0;
-        String name;
-
-        if (parsedId->getInteger(PropertyHelpers::Names::Handle, &handle))
-        {
-            DebuggerObject obj = m_debugger->GetObjectFromHandle(handle);
-            *out_result = obj.GetPropertyDescriptors();
-            *out_internalProperties = obj.GetInternalPropertyDescriptors();
-
-            return Response::OK();
-        }
-        else if (parsedId->getInteger(PropertyHelpers::Names::Ordinal, &ordinal) &&
-                 parsedId->getString(PropertyHelpers::Names::Name, &name))
-        {
-            DebuggerCallFrame callFrame = m_debugger->GetCallFrame(ordinal);
-
-            if (name == PropertyHelpers::Names::Locals)
-            {
-                DebuggerLocalScope obj = callFrame.GetLocals();
-                *out_result = obj.GetPropertyDescriptors();
-                *out_internalProperties = obj.GetInternalPropertyDescriptors();
-
-                return Response::OK();
-            }
-            else if (name == PropertyHelpers::Names::Globals)
-            {
-                DebuggerObject obj = callFrame.GetGlobals();
-                *out_result = obj.GetPropertyDescriptors();
-                *out_internalProperties = obj.GetInternalPropertyDescriptors();
-
-                return Response::OK();
-            }
-        }
-
-        return Response::Error(c_ErrorInvalidObjectId);
     }
 
     Response RuntimeImpl::releaseObject(const String& /*in_objectId*/)

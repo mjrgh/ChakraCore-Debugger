@@ -81,7 +81,6 @@ namespace JsDebug
     {
         JsValueRef expressionStr = JS_INVALID_REFERENCE;
         IfJsErrorThrow(JsCreateStringUtf16(expression.characters16(), expression.length(), &expressionStr));
-
         JsValueRef evalResult = JS_INVALID_REFERENCE;
         JsErrorCode err = JsDiagEvaluate(
             expressionStr,
