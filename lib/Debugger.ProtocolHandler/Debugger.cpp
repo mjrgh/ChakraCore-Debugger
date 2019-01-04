@@ -215,21 +215,27 @@ namespace JsDebug
         m_handler->Continue();
     }
 
+    static void IfSeriousJsErrorThrow(JsErrorCode err)
+    {
+        if (err != JsNoError && err != JsErrorDiagNotAtBreak)
+            IfJsErrorThrow(err);
+    }
+
     void Debugger::StepIn()
     {
-        IfJsErrorThrow(JsDiagSetStepType(JsDiagStepTypeStepIn));
+        IfSeriousJsErrorThrow(JsDiagSetStepType(JsDiagStepTypeStepIn));
         Continue();
     }
 
     void Debugger::StepOut()
     {
-        IfJsErrorThrow(JsDiagSetStepType(JsDiagStepTypeStepOut));
+        IfSeriousJsErrorThrow(JsDiagSetStepType(JsDiagStepTypeStepOut));
         Continue();
     }
 
     void Debugger::StepOver()
     {
-        IfJsErrorThrow(JsDiagSetStepType(JsDiagStepTypeStepOver));
+        IfSeriousJsErrorThrow(JsDiagSetStepType(JsDiagStepTypeStepOver));
         Continue();
     }
 
