@@ -15,6 +15,19 @@
 // This file contains interfaces required by the `inspector_protocol` generated code.
 //
 
+// a custom hash is required for our custom string type
+template<> struct std::hash<std::basic_string<JsDebug::UChar>>
+{
+    std::size_t operator()(const std::basic_string<JsDebug::UChar>& s) const
+    {
+        std::size_t seed = 0;
+        std::hash<JsDebug::UChar> hasher;
+        for (const auto c : s)
+            seed ^= hasher(c) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        return seed;
+    }
+};
+
 namespace JsDebug
 {
     namespace
