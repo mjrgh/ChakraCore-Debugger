@@ -104,6 +104,7 @@ namespace JsDebug
         void HandleResumeEvent();
 
         bool TryResolveBreakpoint(DebuggerBreakpoint& breakpoint);
+        SkipPauseRequest EvaluateConditionOnBreakpoint(int bpId);
         
         // Determine if the given breakpoint's ID is already in the map.  JsDiagSetBreakpoint
         // returns the existing breakpoint when attempting to set a new breakpoint at the same

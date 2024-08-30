@@ -52,7 +52,7 @@
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <Import Project="$(SolutionDir)PropertySheets\Chakra.Cpp.props" />
+  <Import Project="$(ProjectDir)..\..\PropertySheets\Chakra.Cpp.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -66,7 +66,7 @@
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PreprocessorDefinitions>_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)lib\Debugger.Protocol;$(SolutionDir)lib\Debugger.Protocol\Generated;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ChakraCoreDebuggerDir)lib\Debugger.Protocol;$(ChakraCoreDebuggerDir)lib\Debugger.Protocol\Generated;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">MultiThreaded</RuntimeLibrary>
       <RuntimeLibrary Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MultiThreaded</RuntimeLibrary>
       <RuntimeLibrary Condition="'$(Configuration)|$(Platform)'=='Release|x64'">MultiThreaded</RuntimeLibrary>
@@ -79,6 +79,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ConsoleHandler.h" />
     <ClInclude Include="TranslateExceptionToJsErrorCode.h" />
     <ClInclude Include="ConsoleImpl.h" />
     <ClInclude Include="Debugger.h" />
@@ -103,6 +104,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ConsoleHandler.cpp" />
     <ClCompile Include="ConsoleImpl.cpp" />
     <ClCompile Include="Debugger.cpp" />
     <ClCompile Include="DebuggerBreak.cpp" />
@@ -136,12 +138,12 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\..\packages\Microsoft.ChakraCore.vc140.1.10.2\build\native\Microsoft.ChakraCore.vc140.targets" Condition="Exists('..\..\packages\Microsoft.ChakraCore.vc140.1.10.2\build\native\Microsoft.ChakraCore.vc140.targets')" />
+    <Import Project="..\..\packages\Microsoft.ChakraCore.vc140.1.11.24\build\native\Microsoft.ChakraCore.vc140.targets" Condition="Exists('..\..\packages\Microsoft.ChakraCore.vc140.1.11.24\build\native\Microsoft.ChakraCore.vc140.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\..\packages\Microsoft.ChakraCore.vc140.1.10.2\build\native\Microsoft.ChakraCore.vc140.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Microsoft.ChakraCore.vc140.1.10.2\build\native\Microsoft.ChakraCore.vc140.targets'))" />
+    <Error Condition="!Exists('..\..\packages\Microsoft.ChakraCore.vc140.1.11.24\build\native\Microsoft.ChakraCore.vc140.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Microsoft.ChakraCore.vc140.1.11.24\build\native\Microsoft.ChakraCore.vc140.targets'))" />
   </Target>
 </Project>

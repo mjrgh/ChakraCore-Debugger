@@ -15,6 +15,7 @@
 
 #include <ChakraCore.h>
 
+#include "ConsoleHandler.h"
 #include <mutex>
 #include <string>
 #include <vector>
@@ -46,6 +47,8 @@ namespace JsDebug
 
         void ProcessDeferredGo();
 
+        void ConsoleAPICalled(protocol::String& apiType, JsValueRef *arguments, size_t argumentCount);
+        JsValueRef CreateConsoleObject();
         std::unique_ptr<protocol::Array<protocol::Schema::Domain>> GetSupportedDomains();
 
         // protocol::FrontendChannel implementation
@@ -91,6 +94,11 @@ namespace JsDebug
         std::mutex m_lock;
         std::condition_variable m_commandWaiting;
         std::vector<std::pair<CommandType, std::string>> m_commandQueue;
+        ConsoleHandler m_consoleHandler;
+#if DBG
+        // This is for debug purpose to understand how many times the console object fetched.
+        int m_consoleObjectCount;
+#endif
         bool m_isConnected;
         bool m_waitingForDebugger;
         bool m_processingCommandQueue;
@@ -105,4 +113,5 @@ namespace JsDebug
         std::unique_ptr<RuntimeImpl> m_runtimeAgent;
         std::unique_ptr<SchemaImpl> m_schemaAgent;
     };
+
 }
